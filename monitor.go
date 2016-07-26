@@ -6,6 +6,7 @@ import (
         "time"
         "net/smtp"
         "bytes"
+        "io/ioutil"
 )
 const ( 
     //each go routine will be have a task to poll on specified intervals
