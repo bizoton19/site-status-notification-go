@@ -7,6 +7,8 @@ import (
         "net/smtp"
         "bytes"
         "io/ioutil"
+        "fmt"
+        
 )
 const ( 
     //each go routine will be have a task to poll on specified intervals
@@ -18,10 +20,7 @@ const (
 
 var urlsToPoll = []string{
     "http://www.saferproducts.gov/",
-    "http://www.cpsc.gov/",
-    "https://www.saferproducts.gov/CPSRMSPublic/Industry/Home.aspx/",
-    "https://www.saferproducts.gov/CPSRMSPublic/Section15/",
-    "https://www.saferproducts.gov/CPSRMSPublic/Incidents/ReportIncident.aspx/",
+    
 }
 
 //no objects per say in go but types are as such
@@ -44,7 +43,7 @@ func  StateMonitor(updateInterval time.Duration) chan <- State {
             select {
                 case <-ticker.C:
                       logState(urlStatus)
-                      sendNotification(urlStatus)
+                     // sendNotification(urlStatus)
                 case s := <-updates:
                        urlStatus[s.url] = s.status
             
@@ -57,7 +56,12 @@ func  StateMonitor(updateInterval time.Duration) chan <- State {
 func logState (s map[string]string){
     log.Println("Current state:")
     for k, v:= range s{
-        log.Printf("%s %s", k, v)
+        if(v != "200 OK"){
+        log.Printf("RED ALERT! RED ALERT! RED ALERT! %s %s", k, v)
+        } else {
+            log.Printf("ALL GOOD - %s %s", k, v)
+        }
+        
     }
 }    
 
@@ -101,13 +105,16 @@ type Resource struct{
 
 //Poller executes an HTTP head request for url and returns the HTTP status string or an error string.
 func (r *Resource) Poll() string{
-    resp, err := http.Head(r.url)
+    resp, err := http.Get(r.url)
     if err != nil {
         log.Println("Error", r.url, err)
         r.errCount++
         return err.Error()
     }
     r.errCount = 0
+    defer resp.Body.Close()
+   body,  err := ioutil.ReadAll(resp.Body)
+   fmt.Printf("%s", body)
     return resp.Status;
 }
 
