@@ -1,0 +1,9 @@
+{
+	"ImportPath": "github.com/site-status-notification/site-status-notification-go",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v77",
+	"Packages": [
+		"./..."
+	],
+	"Deps": []
+}
