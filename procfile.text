@@ -1,1 +1,1 @@
-worker: go run monitor.go
+worker: cmd

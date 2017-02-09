@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"strings"
 	"time"
+
 	"github.com/fatih/color"
 	"github.com/spf13/viper"
-	"strings"
 )
 
 const (
@@ -29,8 +30,6 @@ func GetRecallURL(page string) string {
 	return incidentDataURL
 }
 
-
-
 var urlsToPoll = []string{
 	"https://www.saferproducts.gov/",
 	"https://www.saferproducts.gov/Default.aspx",
@@ -43,7 +42,6 @@ var urlsToPoll = []string{
 	//"https://search.cpsc.gov",
 	"https://www.poolsafely.gov",
 	GetRecallURL("1"),
-	
 }
 
 //no objects per say in go but types are as such
@@ -65,7 +63,7 @@ func StateMonitor(updateInterval time.Duration, smtpconfig SmtpConfig) chan<- St
 			select {
 			case <-ticker.C:
 				logState(urlStatus)
-			    sendNotification(urlStatus,smtpconfig)
+				sendNotification(urlStatus, smtpconfig)
 			case s := <-updates:
 				urlStatus[s.url] = s.status
 
@@ -79,15 +77,13 @@ func logState(s map[string]string) {
 	log.Println("Current state:")
 	for k, v := range s {
 		if v != "200 OK" {
-			log.Printf(color.RedString("RED ALERT! RED ALERT! RED ALERT! %s %s"), k,v)
+			log.Printf(color.RedString("RED ALERT! RED ALERT! RED ALERT! %s %s"), k, v)
 		} else {
-		   log.Printf(color.GreenString("ALL GOOD - %s %s"),k, v)
+			log.Printf(color.GreenString("ALL GOOD - %s %s"), k, v)
 		}
 
 	}
 }
-
-
 
 //Resouse type represent an HTTP URL to be polled by the program
 //this type will report on the uri string passed to it and the error count
@@ -107,16 +103,15 @@ func (r *Resource) Poll() string {
 	r.errCount = 0
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-    if err != nil{
+	if err != nil {
 		log.Fatal("error connecting to site")
-		resp.Status= "((503 Unavailable))"
+		resp.Status = "((503 Unavailable))"
 	}
 	strBody := fmt.Sprintf("%s", body)
-    if strings.Contains(strBody, strings.ToLower("maintenance")){
-        resp.Status= "((503 Unavailable))"
+	if strings.Contains(strBody, strings.ToLower("maintenance")) {
+		resp.Status = "((503 Unavailable))"
 	}
-	
-	
+
 	return resp.Status
 }
 
@@ -137,56 +132,53 @@ func Poller(in <-chan *Resource, out chan<- *Resource, status chan<- State) {
 
 }
 
-func sendNotification(e map[string]string, smtpInfo SmtpConfig){
-    // Set up authentication information.
+func sendNotification(e map[string]string, smtpInfo SmtpConfig) {
+	// Set up authentication information.
 
-	
-	
-		auth := smtp.PlainAuth("",smtpInfo.username, smtpInfo.password, smtpInfo.hostname)
-    var buffer bytes.Buffer
+	auth := smtp.PlainAuth("", smtpInfo.username, smtpInfo.password, smtpInfo.hostname)
+	var buffer bytes.Buffer
 	// Connect to the server, authenticate, set the sender and recipient,
 	// and send the email all in one step.
-	for k, v:= range e{
-        buffer.WriteString( k+ " " + v)
-    }
-       
-	
+	for k, v := range e {
+		buffer.WriteString(k + " " + v)
+	}
+
 	msg := []byte("To: whom it may concern\r\n" +
 		"Subject: WebSite Status!\r\n" +
 		"\r\n" +
-		buffer.String() +".\r\n")
-	err := smtp.SendMail(smtpInfo.hostname+smtpInfo.port , auth, smtpInfo.from, smtpInfo.to, msg)
+		buffer.String() + ".\r\n")
+	err := smtp.SendMail(smtpInfo.hostname+smtpInfo.port, auth, smtpInfo.from, smtpInfo.to, msg)
 	if err != nil {
 		log.Fatal(err)
-	}      
+	}
 }
-type SmtpConfig  struct {
-	hostname  string
-	password  string
-	username  string
-	port string
-	from  string
-	to  []string
+
+type SmtpConfig struct {
+	hostname string
+	password string
+	username string
+	port     string
+	from     string
+	to       []string
 }
 
 func main() {
 	var conf SmtpConfig
-    viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	err:= viper.ReadInConfig()
-	if err!= nil{
+	viper.SetConfigName("config")
+	viper.AddConfigPath("cmd/poll-worker")
+	err := viper.ReadInConfig()
+	if err != nil {
 		log.Println("Config file not found...")
-	}else{
-            conf = SmtpConfig{viper.GetString("smtpInfo.hostname"),
-				viper.GetString("smtpInfo.password"),
-				viper.GetString("smtpInfo.username"),
-				viper.GetString("smtpInfo.port"),
-				viper.GetString("smtpInfo.from"),
-				viper.GetStringSlice("smtpInfo.to"),
-				
-			}
-			
+	} else {
+		conf = SmtpConfig{viper.GetString("smtpInfo.hostname"),
+			viper.GetString("smtpInfo.password"),
+			viper.GetString("smtpInfo.username"),
+			viper.GetString("smtpInfo.port"),
+			viper.GetString("smtpInfo.from"),
+			viper.GetStringSlice("smtpInfo.to"),
 		}
+
+	}
 	// create input and output channels
 	pending, complete := make(chan *Resource), make(chan *Resource)
 
