@@ -1,7 +1,0 @@
-[smtpInfo]
-hostname = "smtpout.secureserver.net"
-password = "worldwide"
-username = "info@hdwih.com"
-port = ":25"
-from ="asalomon@cloudmonitor.com"
-to="bizoton19@gmail.com"
