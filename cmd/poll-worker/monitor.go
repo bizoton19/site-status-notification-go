@@ -165,7 +165,7 @@ type SmtpConfig struct {
 func main() {
 	var conf SmtpConfig
 	viper.SetConfigName("config")
-	viper.AddConfigPath("cmd/poll-worker")
+	viper.AddConfigPath("../../")
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Println("Config file not found...")
