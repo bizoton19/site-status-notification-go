@@ -1,1 +1,1 @@
-worker: site-status-notification-go
+queue: poll-worker
