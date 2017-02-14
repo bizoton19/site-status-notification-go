@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -24,9 +25,9 @@ const (
 )
 
 //GetURL will get the formatted url
-func GetRecallURL(page string) string {
+func GetIncidentDataURL(page string) string {
 	var safeURL = url.QueryEscape(page)
-	var incidentDataURL = "https://www.saferproducts.gov/RestWebServices/Recall?RecallNumber=" + safeURL
+	var incidentDataURL = "" + safeURL
 	return incidentDataURL
 }
 
@@ -43,7 +44,7 @@ var urlsToPoll = []string{
 	"https://www.poolsafely.gov",
 	"https://cpscnet.cpsc.gov/pin/",
 	"https://cpscnet.cpsc.gov/",
-	GetRecallURL("1"),
+	"https://www.saferproducts.gov/RestWebServices/Recall?RecallNumber=1",
 }
 
 //no objects per say in go but types are as such
@@ -56,7 +57,7 @@ type State struct {
 //Statemonitor maintains a map that stores the state of the URLS being polled
 // and prints the current state every updateInterval nanoseconds.
 //It returns a chan State to which resource state should be sent.
-func StateMonitor(updateInterval time.Duration, smtpconfig SmtpConfig) chan<- State {
+func StateMonitor(updateInterval time.Duration, smtpconfig SMTPConfig) chan<- State {
 	updates := make(chan State) //go routines
 	urlStatus := make(map[string]string)
 	ticker := time.NewTicker(updateInterval)
@@ -64,8 +65,8 @@ func StateMonitor(updateInterval time.Duration, smtpconfig SmtpConfig) chan<- St
 		for {
 			select {
 			case <-ticker.C:
-				logState(urlStatus)
-				//sendNotification(urlStatus, smtpconfig)
+				logState(urlStatus, smtpconfig)
+
 			case s := <-updates:
 				urlStatus[s.url] = s.status
 
@@ -75,15 +76,18 @@ func StateMonitor(updateInterval time.Duration, smtpconfig SmtpConfig) chan<- St
 	return updates
 }
 
-func logState(s map[string]string) {
+func logState(s map[string]string, smtpConf SMTPConfig) {
 	log.Println("Current state:")
 	for k, v := range s {
 		if v != "200 OK" {
 			log.Printf(color.RedString("RED ALERT! RED ALERT! RED ALERT! %s %s"), k, v)
 		} else {
 			log.Printf(color.GreenString("ALL GOOD - %s %s"), k, v)
+			delete(s, k)
 		}
-
+	}
+	if len(s) > 0 {
+		sendNotification(s, smtpConf)
 	}
 }
 
@@ -134,7 +138,7 @@ func Poller(in <-chan *Resource, out chan<- *Resource, status chan<- State) {
 
 }
 
-func sendNotification(e map[string]string, smtpInfo SmtpConfig) {
+func sendNotification(e map[string]string, smtpInfo SMTPConfig) {
 	// Set up authentication information.
 
 	auth := smtp.PlainAuth("", smtpInfo.username, smtpInfo.password, smtpInfo.hostname)
@@ -155,7 +159,7 @@ func sendNotification(e map[string]string, smtpInfo SmtpConfig) {
 	}
 }
 
-type SmtpConfig struct {
+type SMTPConfig struct {
 	hostname string
 	password string
 	username string
@@ -165,14 +169,15 @@ type SmtpConfig struct {
 }
 
 func main() {
-	var conf SmtpConfig
-	viper.SetConfigName("config")
-	viper.AddConfigPath("../../")
+
+	var conf SMTPConfig
+	viper.SetConfigName("config.dev")
+	viper.AddConfigPath("config")
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Println("Config file not found...")
+		log.Println("Config file not found..." + err.Error())
 	} else {
-		conf = SmtpConfig{viper.GetString("smtpInfo.hostname"),
+		conf = SMTPConfig{viper.GetString("smtpInfo.hostname"),
 			viper.GetString("smtpInfo.password"),
 			viper.GetString("smtpInfo.username"),
 			viper.GetString("smtpInfo.port"),
@@ -203,4 +208,12 @@ func main() {
 	for r := range complete {
 		go r.Sleep(pending)
 	}
+
+	fileserver := http.FileServer(http.Dir("public"))
+	http.Handle("/public/", http.StripPrefix("/public/", fileserver))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+	http.ListenAndServe(":"+port, nil)
 }
