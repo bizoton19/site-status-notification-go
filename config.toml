@@ -1,7 +1,0 @@
-[smtpInfo]
-hostname = ""
-password = ""
-username = ""
-port = ":25"
-from =""
-to=""

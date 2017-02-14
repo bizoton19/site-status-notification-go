@@ -41,6 +41,8 @@ var urlsToPoll = []string{
 	"https://www.saferproducts.gov/CPSRMSPublic/Incidents/ReportIncident.aspx",
 	//"https://search.cpsc.gov",
 	"https://www.poolsafely.gov",
+	"https://cpscnet.cpsc.gov/pin/",
+	"https://cpscnet.cpsc.gov/",
 	GetRecallURL("1"),
 }
 
@@ -63,7 +65,7 @@ func StateMonitor(updateInterval time.Duration, smtpconfig SmtpConfig) chan<- St
 			select {
 			case <-ticker.C:
 				logState(urlStatus)
-				sendNotification(urlStatus, smtpconfig)
+				//sendNotification(urlStatus, smtpconfig)
 			case s := <-updates:
 				urlStatus[s.url] = s.status
 

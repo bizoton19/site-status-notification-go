@@ -22,4 +22,4 @@ _testmain.go
 *.exe
 *.test
 *.prof
-config_local.toml
+*.dev.toml
