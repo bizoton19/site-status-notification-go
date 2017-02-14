@@ -224,9 +224,8 @@ func main() {
 
 	}()
 
-	go log.Fatal(http.ListenAndServe(":"+port, nil))
-
 	for r := range complete {
+		go log.Fatal(http.ListenAndServe(":"+port, nil))
 		go r.Sleep(pending)
 	}
 
