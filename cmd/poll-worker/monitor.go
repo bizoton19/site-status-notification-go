@@ -76,17 +76,22 @@ func StateMonitor(updateInterval time.Duration, smtpconfig SMTPConfig) chan<- St
 }
 
 func logState(s map[string]string, smtpConf SMTPConfig) {
-	log.Println("Current state:")
-	for k, v := range s {
-		if v != "200 OK" {
-			log.Printf(color.RedString("RED ALERT! RED ALERT! RED ALERT! %s %s"), k, v)
-		} else {
-			log.Printf(color.GreenString("ALL GOOD - %s %s"), k, v)
-			delete(s, k)
-		}
-	}
 	if len(s) > 0 {
-		sendNotification(s, smtpConf)
+		log.Println("Current state:")
+		for k, v := range s {
+			if v != "200 OK" {
+				log.Printf(color.RedString("RED ALERT! RED ALERT! RED ALERT! %s %s"), k, v)
+			} else {
+				log.Printf(color.GreenString("ALL GOOD - %s %s"), k, v)
+				delete(s, k)
+			}
+		}
+
+		if len(s) > 0 {
+			sendNotification(s, smtpConf)
+		}
+	} else {
+		log.Println("State map object is currently emtpy")
 	}
 }
 
@@ -205,12 +210,12 @@ func main() {
 	//lLaunch the StateMonitor
 	status := StateMonitor(statusIntervall, conf)
 
-	go log.Fatal(http.ListenAndServe(":"+port, nil))
 	//Launch some poller goRoutines
 	for i := 0; i < numPollers; i++ {
 		go Poller(pending, complete, status)
 
 	}
+	go log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	//Send some Resources to the pending queue.
 	go func() {
