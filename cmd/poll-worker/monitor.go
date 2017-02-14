@@ -198,16 +198,18 @@ func main() {
 	if port == "" {
 		port = "8000"
 	}
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+
 	// create input and output channels
 	pending, complete := make(chan *Resource), make(chan *Resource)
 
 	//lLaunch the StateMonitor
 	status := StateMonitor(statusIntervall, conf)
 
+	go log.Fatal(http.ListenAndServe(":"+port, nil))
 	//Launch some poller goRoutines
 	for i := 0; i < numPollers; i++ {
 		go Poller(pending, complete, status)
+
 	}
 
 	//Send some Resources to the pending queue.
