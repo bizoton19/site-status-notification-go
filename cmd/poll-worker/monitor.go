@@ -210,11 +210,6 @@ func main() {
 		}
 
 	}()
-
-	for r := range complete {
-		go r.Sleep(pending)
-	}
-
 	fileserver := http.FileServer(http.Dir("public"))
 	http.Handle("/public/", http.StripPrefix("/public/", fileserver))
 	port := os.Getenv("PORT")
@@ -222,4 +217,8 @@ func main() {
 		port = "8000"
 	}
 	http.ListenAndServe(":"+port, nil)
+	for r := range complete {
+		go r.Sleep(pending)
+	}
+
 }
