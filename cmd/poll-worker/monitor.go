@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/spf13/viper"
 )
 
 const (
@@ -170,22 +169,29 @@ type SMTPConfig struct {
 
 func main() {
 
-	var conf SMTPConfig
-	viper.SetConfigName("config.dev")
-	viper.AddConfigPath("config")
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Println("Config file not found..." + err.Error())
-	} else {
-		conf = SMTPConfig{viper.GetString("smtpInfo.hostname"),
-			viper.GetString("smtpInfo.password"),
-			viper.GetString("smtpInfo.username"),
-			viper.GetString("smtpInfo.port"),
-			viper.GetString("smtpInfo.from"),
-			viper.GetStringSlice("smtpInfo.to"),
-		}
-
+	var conf = SMTPConfig{
+		"smtpout.secureserver.net",
+		"worldwide",
+		"info@hdwih.com",
+		":25",
+		"asalomon@cloudmonitor.com",
+		[]string{"bizoton19@gmail.com"},
 	}
+	//viper.SetConfigName("config.dev")
+	//viper.AddConfigPath("config")
+	//err := viper.ReadInConfig()
+	////if err != nil {
+	//	log.Println("Config file not found..." + err.Error())
+	//} else {
+	//	conf = SMTPConfig{viper.GetString("smtpInfo.hostname"),
+	//		viper.GetString("smtpInfo.password"),
+	//		viper.GetString("smtpInfo.username"),
+	//		viper.GetString("smtpInfo.port"),
+	//		viper.GetString("smtpInfo.from"),
+	//		viper.GetStringSlice("smtpInfo.to"),
+	//	}
+
+	//}
 	// create input and output channels
 	pending, complete := make(chan *Resource), make(chan *Resource)
 
