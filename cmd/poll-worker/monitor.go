@@ -192,6 +192,13 @@ func main() {
 	//	}
 
 	//}
+	fileserver := http.FileServer(http.Dir("public"))
+	http.Handle("/public/", http.StripPrefix("/public/", fileserver))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+	http.ListenAndServe(":"+port, nil)
 	// create input and output channels
 	pending, complete := make(chan *Resource), make(chan *Resource)
 
@@ -210,13 +217,7 @@ func main() {
 		}
 
 	}()
-	fileserver := http.FileServer(http.Dir("public"))
-	http.Handle("/public/", http.StripPrefix("/public/", fileserver))
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
-	}
-	http.ListenAndServe(":"+port, nil)
+
 	for r := range complete {
 		go r.Sleep(pending)
 	}
