@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -197,12 +196,12 @@ func main() {
 	//	}
 
 	//}
-	fileserver := http.FileServer(http.Dir("public"))
-	http.Handle("/public/", http.StripPrefix("/public/", fileserver))
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
-	}
+	//fileserver := http.FileServer(http.Dir("public"))
+	//http.Handle("/public/", http.StripPrefix("/public/", fileserver))
+	///port := os.Getenv("PORT")
+	//if port == "" {
+	//	port = "8000"
+	//}
 
 	// create input and output channels
 	pending, complete := make(chan *Resource), make(chan *Resource)
@@ -225,7 +224,7 @@ func main() {
 	}()
 
 	for r := range complete {
-		go log.Fatal(http.ListenAndServe(":"+port, nil))
+
 		go r.Sleep(pending)
 	}
 
