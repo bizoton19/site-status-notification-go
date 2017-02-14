@@ -215,7 +215,6 @@ func main() {
 		go Poller(pending, complete, status)
 
 	}
-	go log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	//Send some Resources to the pending queue.
 	go func() {
@@ -224,6 +223,8 @@ func main() {
 		}
 
 	}()
+
+	go log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	for r := range complete {
 		go r.Sleep(pending)
