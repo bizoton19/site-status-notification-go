@@ -198,7 +198,7 @@ func main() {
 	if port == "" {
 		port = "8000"
 	}
-	http.ListenAndServe(":"+port, nil)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 	// create input and output channels
 	pending, complete := make(chan *Resource), make(chan *Resource)
 
