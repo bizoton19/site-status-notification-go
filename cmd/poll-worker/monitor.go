@@ -173,14 +173,7 @@ type SMTPConfig struct {
 
 func main() {
 
-	var conf = SMTPConfig{
-		"smtpout.secureserver.net",
-		"worldwide",
-		"info@hdwih.com",
-		":25",
-		"asalomon@cloudmonitor.com",
-		[]string{"bizoton19@gmail.com"},
-	}
+	var conf = SMTPConfig{}
 	//viper.SetConfigName("config.dev")
 	//viper.AddConfigPath("config")
 	//err := viper.ReadInConfig()
