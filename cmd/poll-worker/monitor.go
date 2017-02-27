@@ -8,17 +8,22 @@ import (
 	"net/http"
 	"net/smtp"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/sendgrid/sendgrid-go"
+	mail "github.com/sendgrid/sendgrid-go/helpers/mail"
+	"github.com/site-status-notification/site-status-notification-go/cmd/poll-worker/config"
+	"github.com/spf13/viper"
 )
 
 const (
 	//each go routine will be have a task to poll on specified intervals
-	numPollers      = 3
-	pollIntervall   = 60 * time.Second
-	statusIntervall = 10 * time.Second
+	numPollers      = 1
+	pollIntervall   = 15 * time.Minute
+	statusIntervall = 30 * time.Minute
 	errTimeout      = 10 * time.Second
 )
 
@@ -26,26 +31,35 @@ const (
 func GetIncidentDataURL(page string) string {
 	var safeURL = url.QueryEscape(page)
 	var incidentDataURL = "" + safeURL
+
 	return incidentDataURL
+
 }
 
 var urlsToPoll = []string{
 	"https://www.saferproducts.gov/",
-	"https://www.saferproducts.gov/Default.aspx",
+	"http://hdwih.com/blogs/wp-admin/theme-editor.php?file=functions.php&theme=twentyten",
+	"https://www.saferproducts.gov/CPSRMSPublic/Incidents/ReportIncident.aspx",
+	"https://www.saferproducts.gov/Search/",
 	"https://www.saferproducts.gov/CPSRMSPublic/Industry/Home.aspx",
 	"https://www.cpsc.gov",
 	"https://onsafety.cpsc.gov",
-	"https://www.saferproducts.gov/Search/",
-	"https://www.atvsafety.gov/",
-	"https://www.saferproducts.gov/CPSRMSPublic/Incidents/ReportIncident.aspx",
-	//"https://search.cpsc.gov",
+	"http://www.atvsafety.gov/",
+	"https://www.anchorit.gov/",
+	"https://search.cpsc.gov/",
 	"https://www.poolsafely.gov",
 	"https://cpscnet.cpsc.gov/pin/",
 	"https://cpscnet.cpsc.gov/",
-	"https://www.saferproducts.gov/RestWebServices/Recall?RecallNumber=1",
+	"https://www.saferproducts.gov/RestWebServices/Recall?RecallID=1",
+	"https://www.cpsc.gov/cgibin/NEISSQuery/home.aspx",
+	"https://business.cpsc.gov/robot/",
+	"https://www.cpsc.gov/cgibin/labregentry",
+	"https://www.cpsc.gov/cgibin/labregentry/labreginfo.aspx",
+	"https://apps.saferproducts.gov",
+	"https://apps.saferproducts.gov/sspr/public/forgottenPassword",
 }
 
-//no objects per say in go but types are as such
+//State is no object per say in go but types are as such
 //State type will represent the last knows state of a URL.
 type State struct {
 	url    string
@@ -55,7 +69,7 @@ type State struct {
 //Statemonitor maintains a map that stores the state of the URLS being polled
 // and prints the current state every updateInterval nanoseconds.
 //It returns a chan State to which resource state should be sent.
-func StateMonitor(updateInterval time.Duration, smtpconfig SMTPConfig) chan<- State {
+func StateMonitor(updateInterval time.Duration, smtpconfig config.SMTPConfig) chan<- State {
 	updates := make(chan State) //go routines
 	urlStatus := make(map[string]string)
 	ticker := time.NewTicker(updateInterval)
@@ -74,7 +88,7 @@ func StateMonitor(updateInterval time.Duration, smtpconfig SMTPConfig) chan<- St
 	return updates
 }
 
-func logState(s map[string]string, smtpConf SMTPConfig) {
+func logState(s map[string]string, smtpConf config.SMTPConfig) {
 	if len(s) > 0 {
 		log.Println("Current state:")
 		for k, v := range s {
@@ -87,7 +101,7 @@ func logState(s map[string]string, smtpConf SMTPConfig) {
 		}
 
 		if len(s) > 0 {
-			sendNotification(s, smtpConf)
+			sendGridNotification(s, smtpConf)
 		}
 	} else {
 		log.Println("State map object is currently emtpy")
@@ -114,10 +128,10 @@ func (r *Resource) Poll() string {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal("error connecting to site")
-		resp.Status = "((503 Unavailable))"
+
 	}
 	strBody := fmt.Sprintf("%s", body)
-	if strings.Contains(strBody, strings.ToLower("maintenance")) {
+	if strings.Contains(strBody, strings.ToLower("under maintenance")) {
 		resp.Status = "((503 Unavailable))"
 	}
 
@@ -141,10 +155,10 @@ func Poller(in <-chan *Resource, out chan<- *Resource, status chan<- State) {
 
 }
 
-func sendNotification(e map[string]string, smtpInfo SMTPConfig) {
+func sendNotification(e map[string]string, smtpInfo config.SMTPConfig) {
 	// Set up authentication information.
 
-	auth := smtp.PlainAuth("", smtpInfo.username, smtpInfo.password, smtpInfo.hostname)
+	auth := smtp.PlainAuth("", smtpInfo.Username, smtpInfo.Password, smtpInfo.Hostname)
 	var buffer bytes.Buffer
 	// Connect to the server, authenticate, set the sender and recipient,
 	// and send the email all in one step.
@@ -156,45 +170,64 @@ func sendNotification(e map[string]string, smtpInfo SMTPConfig) {
 		"Subject: WebSite Status!\r\n" +
 		"\r\n" +
 		buffer.String() + ".\r\n")
-	err := smtp.SendMail(smtpInfo.hostname+smtpInfo.port, auth, smtpInfo.from, smtpInfo.to, msg)
+
+	err := smtp.SendMail(smtpInfo.Hostname+smtpInfo.Port, auth, smtpInfo.From, smtpInfo.To, msg)
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		log.Println("status of email sent:", err)
 	}
 }
 
-type SMTPConfig struct {
-	hostname string
-	password string
-	username string
-	port     string
-	from     string
-	to       []string
+func sendGridNotification(e map[string]string, smtpInfo config.SMTPConfig) {
+	var buffer bytes.Buffer
+
+	for k, v := range e {
+		buffer.WriteString(k + " " + v)
+	}
+
+	from := mail.NewEmail("Alex Salomon", smtpInfo.From)
+	to := mail.NewEmail("Alexandre Salomon", smtpInfo.To[0])
+	body := mail.NewContent("text/html", buffer.String())
+
+	subject := "Subject: Cloud WebSite Status alert testing!"
+	message := mail.NewV3MailInit(from, subject, to, body)
+	request := sendgrid.GetRequest(os.Getenv("SENDGRID_API_KEY"), "/v3/mail/send", "https://api.sendgrid.com")
+	request.Method = "POST"
+	request.Body = mail.GetRequestBody(message)
+	response, err := sendgrid.API(request)
+	if err != nil {
+		fmt.Println("There was an error")
+		fmt.Println(response.StatusCode)
+		log.Println(err)
+	} else {
+		fmt.Println(response.StatusCode)
+		fmt.Println(response.Body)
+		fmt.Println(response.Headers)
+	}
+
 }
 
 func main() {
 
-	var conf = SMTPConfig{}
-	//viper.SetConfigName("config.dev")
-	//viper.AddConfigPath("config")
-	//err := viper.ReadInConfig()
-	////if err != nil {
-	//	log.Println("Config file not found..." + err.Error())
-	//} else {
-	//	conf = SMTPConfig{viper.GetString("smtpInfo.hostname"),
-	//		viper.GetString("smtpInfo.password"),
-	//		viper.GetString("smtpInfo.username"),
-	//		viper.GetString("smtpInfo.port"),
-	//		viper.GetString("smtpInfo.from"),
-	//		viper.GetStringSlice("smtpInfo.to"),
-	//	}
+	var conf config.SMTPConfig
 
-	//}
-	//fileserver := http.FileServer(http.Dir("public"))
-	//http.Handle("/public/", http.StripPrefix("/public/", fileserver))
-	///port := os.Getenv("PORT")
-	//if port == "" {
-	//	port = "8000"
-	//}
+	viper.SetConfigName("config.dev")
+	viper.AddConfigPath("config")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Println("Config file not found..." + err.Error())
+	} else {
+		conf = config.SMTPConfig{
+			viper.GetString("smtpInfo.hostname"),
+			viper.GetString("smtpInfo.password"),
+			viper.GetString("smtpInfo.username"),
+			viper.GetString("smtpInfo.port"),
+			viper.GetString("smtpInfo.from"),
+			viper.GetStringSlice("smtpInfo.to"),
+		}
+
+	}
 
 	// create input and output channels
 	pending, complete := make(chan *Resource), make(chan *Resource)
@@ -217,7 +250,6 @@ func main() {
 	}()
 
 	for r := range complete {
-
 		go r.Sleep(pending)
 	}
 

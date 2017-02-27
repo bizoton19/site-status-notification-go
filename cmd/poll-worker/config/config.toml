@@ -5,3 +5,25 @@ username = ""
 port = ":25"
 from =""
 to=""
+
+[urlsToPoll]
+urls="https://www.saferproducts.gov/"
+	http://hdwih.com/blogs/wp-admin/theme-editor.php?file=functions.php&theme=twentyten,
+	https://www.saferproducts.gov/CPSRMSPublic/Incidents/ReportIncident.aspx,
+	https://www.saferproducts.gov/Search/,
+	https://www.saferproducts.gov/CPSRMSPublic/Industry/Home.aspx,
+	https://www.cpsc.gov,
+	https://onsafety.cpsc.gov,
+	http://www.atvsafety.gov/,
+	https://www.anchorit.gov/,
+	https://search.cpsc.gov/,
+	https://www.poolsafely.gov,
+	https://cpscnet.cpsc.gov/pin/,
+	https://cpscnet.cpsc.gov/,
+	https://www.saferproducts.gov/RestWebServices/Recall?RecallID=1,
+	https://www.cpsc.gov/cgibin/NEISSQuery/home.aspx,
+	https://business.cpsc.gov/robot/,
+	https://www.cpsc.gov/cgibin/labregentry,
+	https://www.cpsc.gov/cgibin/labregentry/labreginfo.aspx,
+	https://apps.saferproducts.gov,
+	https://apps.saferproducts.gov/sspr/public/forgottenPassword"
