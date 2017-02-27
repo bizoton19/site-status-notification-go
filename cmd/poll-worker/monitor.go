@@ -38,7 +38,6 @@ func GetIncidentDataURL(page string) string {
 
 var urlsToPoll = []string{
 	"https://www.saferproducts.gov/",
-	"http://hdwih.com/blogs/wp-admin/theme-editor.php?file=functions.php&theme=twentyten",
 	"https://www.saferproducts.gov/CPSRMSPublic/Incidents/ReportIncident.aspx",
 	"https://www.saferproducts.gov/Search/",
 	"https://www.saferproducts.gov/CPSRMSPublic/Industry/Home.aspx",
